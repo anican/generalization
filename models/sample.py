@@ -11,14 +11,12 @@ class Network(Model):
         model.add(Conv2D(16, (9, 9), input_shape=(32, 32, 3)))
         model.add(Activation('relu'))
         model.add(Conv2D(16, (3, 3)))
+        model.add(Flatten())
+        model.add(Dense(10))
         self.model = model
-        self.flatten = Flatten()
-        self.fc = Dense(10)
 
     def call(self, x):
         x = self.model(x)
-        x = self.flatten(x)
-        x = self.fc(x)
         return x
 
 

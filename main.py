@@ -1,10 +1,11 @@
 import argparse
+import json
 import os
 import tensorflow as tf
 import time
-from tqdm import tqdm
 
 
+from gpu_devices import device_nums
 from models import VGG, Network
 from utils import prepare_data, normalize, get_experiment_str
 
@@ -44,35 +45,33 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--conv_width', type=int, default=256)
-    parser.add_argument('--cuda', type=bool, default=False)
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--epsilon', type=float, default=0.01)
     parser.add_argument('--num_block', type=int, default=6)
     parser.add_argument('--num_dense', type=int, default=2)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--weight_decay', type=float, default=0.0)
     hparams = parser.parse_args()
 
-    device_name = tf.test.gpu_device_name()
-    print('Using', 'gpu' if hparams.cuda else 'cpu')
-    if hparams.cuda:
-        if device_name != '/device:GPU:0':
-            raise SystemError('GPU device not found')
-        print('Found GPU at: {}'.format(device_name))
+    if tf.test.is_gpu_available():
+        gpus = tf.config.list_physical_devices('GPU')
+        gpus_to_use = [gpu for idx, gpu in enumerate(gpus) if idx in device_nums]
+        tf.config.set_visible_devices(gpus_to_use, 'GPU')
 
     tf.random.set_seed(hparams.seed)
-    print('loading data...')
+    print('Data Loading...')
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     x_train, x_test = normalize(x_train, x_test)
     train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train)).map(prepare_data).shuffle(50000).batch(hparams.batch_size)
     test_loader = tf.data.Dataset.from_tensor_slices((x_test, y_test)).map(prepare_data).shuffle(10000).batch(hparams.batch_size)
-    print('finished loading data...')
+    print('End Data Loading...\n')
 
     model = Network() # VGG(hparams)
     criterion = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     optimizer = tf.keras.optimizers.Adam()
     log_dir = os.getcwd() + '/logs/gradient_tape/' + get_experiment_str(hparams)
-    print("logging in ...", log_dir)
+    print("Logging...\n", log_dir, '\n')
     summary_writer = tf.summary.create_file_writer(log_dir)
     # TODO: specify dtypes for metrics?
     train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -82,9 +81,10 @@ if __name__ == '__main__':
     test_loss = tf.keras.metrics.Mean(name='test_loss')
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
 
-    print('training model...')
+    print('Training Model...')
     start = time.time()
-    for epoch in tqdm(range(hparams.epochs)):
+    epoch = 0
+    while True:
         train_loss.reset_states()
         train_accuracy.reset_states()
 
@@ -100,11 +100,38 @@ if __name__ == '__main__':
             tf.summary.scalar('test_loss', test_loss.result(), step=epoch)
             tf.summary.scalar('test_acc', test_accuracy.result(), step=epoch)
         template = 'Epoch {}, Loss: {}, Accuracy: {}'
-        print(template.format(epoch + 1, train_loss.result(),
-                              train_accuracy.result() * 100))
+        loss_val = train_loss.result()
+        acc_val = train_accuracy.result() * 100
+        print(template.format(epoch + 1, loss_val, acc_val), '\n')
+        epoch += 1
+        if loss_val < hparams.epsilon:
+            # if we've reached the cross-entropy criterion stopping point
+            break
     end = time.time()
-    # save_dir = os.getcwd() + '/checkpoints/' + get_experiment_str(hparams) + '.h5'
-    # print('saving model...', save_dir)
-    # model.save(save_dir)
-    print('Test Accuracy: {}, Training Time: {}'.format(test_accuracy.result() * 100,
-                                                        end - start))
+    total_time = end - start
+
+    print('Stopping criterion reached!\nSaving model...')
+    h5_path = os.path.join(os.getcwd(), 'weights.h5')
+    model.save_weights(h5_path)
+    info = {}
+    train_acc_val = train_accuracy.result() * 100
+    test_acc_val = test_accuracy.result() * 100
+    info['hparams'] = vars(hparams)
+    info['train_acc'] = float(train_acc_val.numpy())
+    info['test_acc'] = float(test_acc_val.numpy())
+    info['train_time'] = total_time
+    json_path = os.path.join(os.getcwd(), 'config.json')
+    with open(json_path, 'w') as file:
+        json.dump(info, file)
+
+    with summary_writer.as_default():
+        tf.summary.scalar('Train Time (sec)', total_time, step=0)
+    print('Training Time Elapsed: {} | Training Accuracy: {}'.format(total_time, train_acc_val))
+    print('Test Accuracy: {}'.format(test_acc_val, '\n'))
+    print('done')
+"""
+TODO: 
+- saving in H5 format specifically (sequential giving some issues)
+- checking functionality for (multi)-gpu
+"""
+
