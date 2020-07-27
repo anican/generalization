@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import tensorflow as tf
 import time
@@ -45,13 +46,12 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--conv_width', type=int, default=256)
     parser.add_argument('--dropout', type=float, default=0.0)
-    parser.add_argument('--epochs', type=int, default=0)
     parser.add_argument('--epsilon', type=float, default=0.01)
-    parser.add_argument('--gpu_idx', type=int)
+    parser.add_argument('--gpu_idx', type=int, default=0)
     parser.add_argument('--max_epochs', type=int, default=500)
     parser.add_argument('--model_num', type=int)
-    parser.add_argument('--num_block', type=int, default=6)
-    parser.add_argument('--num_dense', type=int, default=2)
+    parser.add_argument('--num_block', type=int, default=2)
+    parser.add_argument('--num_dense', type=int, default=1)
     parser.add_argument('--seed', type=int, default=446)
     parser.add_argument('--weight_decay', type=float, default=0.0)
     hparams = parser.parse_args()
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         .map(prepare_data).shuffle(10000).batch(hparams.batch_size)
     print('End Data Loading...\n')
 
-    model = VGG(hparams)  # Network()
+    model = VGG(hparams)
     criterion = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     optimizer = tf.keras.optimizers.Adam()
     log_dir = os.getcwd() + '/logs/gradient_tape/' + 'model_{}'.format(hparams.model_num)
@@ -102,11 +102,11 @@ if __name__ == '__main__':
             tf.summary.scalar('test_loss', test_loss.result(), step=epoch)
             tf.summary.scalar('test_acc', test_accuracy.result(), step=epoch)
         template = 'Epoch {}, Loss: {}, Accuracy: {}'
-        loss_val = train_loss.result()
+        loss_val = float(train_loss.result().numpy())
         acc_val = train_accuracy.result() * 100
         print(template.format(epoch + 1, loss_val, acc_val), '\n')
         epoch += 1
-        if loss_val < hparams.epsilon or epoch > hparams.max_epochs:
+        if float(math.floor(loss_val)) <= hparams.epsilon or epoch > hparams.max_epochs:
             # if we've reached the cross-entropy criterion stopping point
             # or if we've exceeded the number of permissible epochs
             break
