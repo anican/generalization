@@ -106,7 +106,7 @@ if __name__ == '__main__':
         acc_val = train_accuracy.result() * 100
         print(template.format(epoch + 1, loss_val, acc_val), '\n')
         epoch += 1
-        if float(math.floor(loss_val)) <= hparams.epsilon or epoch > hparams.max_epochs:
+        if abs(loss_val - hparams.epsilon) < 0.01 or epoch > hparams.max_epochs:
             # if we've reached the cross-entropy criterion stopping point
             # or if we've exceeded the number of permissible epochs
             break
