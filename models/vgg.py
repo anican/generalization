@@ -2,6 +2,7 @@ import argparse
 from argparse import Namespace
 import numpy as np
 from tensorflow.keras import layers
+import os
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.regularizers import l2
 
@@ -89,6 +90,9 @@ def _test():
     out = net(x)
 
     print(net.summary())
+    h5_path = os.path.join(os.getcwd(), 'weights.h5')
+    net.save_weights(h5_path)
+    print('ready...')
 
 if __name__ == '__main__':
     _test()
