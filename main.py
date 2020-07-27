@@ -47,9 +47,8 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--epochs', type=int, default=0)
     parser.add_argument('--epsilon', type=float, default=0.01)
-    # TODO: change to 500
     parser.add_argument('--gpu_idx', type=int)
-    parser.add_argument('--max_epochs', type=int, default=1)
+    parser.add_argument('--max_epochs', type=int, default=500)
     parser.add_argument('--model_num', type=int)
     parser.add_argument('--num_block', type=int, default=6)
     parser.add_argument('--num_dense', type=int, default=2)
@@ -71,13 +70,12 @@ if __name__ == '__main__':
         .map(prepare_data).shuffle(10000).batch(hparams.batch_size)
     print('End Data Loading...\n')
 
-    model = Network() # VGG(hparams)
+    model = VGG(hparams)  # Network()
     criterion = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     optimizer = tf.keras.optimizers.Adam()
     log_dir = os.getcwd() + '/logs/gradient_tape/' + 'model_{}'.format(hparams.model_num)
     print("Logging...\n", log_dir, '\n')
     summary_writer = tf.summary.create_file_writer(log_dir)
-    # TODO: specify dtypes for metrics?
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
     # val_loss = tf.keras.metrics.Mean(name='val_loss')
