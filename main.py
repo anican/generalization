@@ -48,7 +48,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--epsilon', type=float, default=0.01)
     parser.add_argument('--gpu_idx', type=int, default=0)
-    parser.add_argument('--max_epochs', type=int, default=500)
+    parser.add_argument('--max_epochs', type=int, default=300)
     parser.add_argument('--model_num', type=int)
     parser.add_argument('--num_block', type=int, default=2)
     parser.add_argument('--num_dense', type=int, default=1)
@@ -106,10 +106,12 @@ if __name__ == '__main__':
         acc_val = train_accuracy.result() * 100
         print(template.format(epoch + 1, loss_val, acc_val), '\n')
         epoch += 1
-        if abs(loss_val - hparams.epsilon) < 0.01 or epoch > hparams.max_epochs:
-            # if we've reached the cross-entropy criterion stopping point
-            # or if we've exceeded the number of permissible epochs
+        if loss_val < hparams.epsilon or epoch > hparams.max_epochs:
             break
+        # if abs(loss_val - hparams.epsilon) < 0.01 or epoch > hparams.max_epochs:
+        #     # if we've reached the cross-entropy criterion stopping point
+        #     # or if we've exceeded the number of permissible epochs
+        #     break
     end = time.time()
     total_time = end - start
 
