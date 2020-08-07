@@ -1,0 +1,1 @@
+{"hparams": {"batch_size": 512, "conv_width": 256, "dropout": 0.0, "epsilon": 0.01, "gpu_idx": 0, "max_epochs": 300, "model_num": 42, "num_block": 4, "num_dense": 1, "seed": 446, "weight_decay": 0.0}, "train_acc": 99.7699966430664, "test_acc": 78.75362396240234, "train_time": 3631.981420278549}
