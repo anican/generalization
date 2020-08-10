@@ -81,16 +81,20 @@ if __name__ == '__main__':
                         required=True, help='Specify a valid H5 weights file, which '
                                             'corresponds to the chosen config file.')
     args = parser.parse_args()
-    # TODO: figure out why querying on the data is worse than average performance
-    #### OLD METHOD ####
-    # print('Data Loading...')
-    # (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-    # x_train, x_test = normalize(x_train, x_test)
-    # train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train)) \
-    #     .map(prepare_data).shuffle(50000).batch(args.batch_size)
+    print('Data Loading...')
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train, x_test = normalize(x_train, x_test)
+    train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train)) \
+        .map(prepare_data).shuffle(50000).batch(args.batch_size)
     # test_loader = tf.data.Dataset.from_tensor_slices((x_test, y_test)) \
     #     .map(prepare_data).shuffle(10000).batch(args.batch_size)
-    # print('End Data Loading...\n')
+
+    model = construct_model(args.config, args.weights)
+    accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')
+
+    for (data, target) in tqdm.tqdm(train_loader):
+        step(data=data, target=target)
+    print(accuracy.result().numpy() * 100)
 
     #### TFDS METHOD ####
     # dataset = tfds.load('cifar10', split='train', shuffle_files=True)
