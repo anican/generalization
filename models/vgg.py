@@ -4,6 +4,7 @@ import numpy as np
 from tensorflow.keras import layers
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.regularizers import l2
+from utils import *
 
 
 class VGG(Model):
@@ -107,14 +108,20 @@ def _test():
     hparams = parser.parse_args()
     net = VGG(hparams)
 
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train, x_test = normalize(x_train, x_test)
+    train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train)) \
+        .map(prepare_data).shuffle(50000).batch(50000) #.batch(hparams.batch_size)
     # net = VGG16((32, 32, 3))
-    x = np.random.randn(500, 32, 32, 3)
-    out = net(x)
+    import time
+    for (data, _) in train_loader:
+        print(data.shape)
+        start = time.time()
+        net(data)
+        end = time.time()
+        print(end - start)
 
-    # print(net.summary())
-    # h5_path = os.path.join(os.getcwd(), 'weights.h5')
-    # net.save_weights(h5_path)
-    print('ready...')
+    # x = np.random.randn(500, 32, 32, 3)
 
 
 if __name__ == '__main__':
