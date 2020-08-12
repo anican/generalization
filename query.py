@@ -62,13 +62,13 @@ def construct_model(config_path, weights_path):
     return model
 
 
-def query(model, dataset, batch_size):
-    start = time.time()
-    data = next(iter(dataset.batch(batch_size)))['image']
-    logits = model(data)
-    end = time.time()
-    print("Query took: {}\n", end - start)
-    return logits
+# def query(model, dataset, batch_size):
+#     start = time.time()
+#     data = next(iter(dataset.batch(batch_size)))['image']
+#     logits = model(data)
+#     end = time.time()
+#     print("Query took: {}\n", end - start)
+#     return logits
 
 
 if __name__ == '__main__':
@@ -92,9 +92,13 @@ if __name__ == '__main__':
     model = construct_model(args.config, args.weights)
     accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')
 
+    start = time.time()
+    # query
     for (data, target) in tqdm.tqdm(train_loader):
         step(data=data, target=target)
+    end = time.time()
     print(accuracy.result().numpy() * 100)
+
 
     #### TFDS METHOD ####
     # dataset = tfds.load('cifar10', split='train', shuffle_files=True)
