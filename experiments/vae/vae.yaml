@@ -1,0 +1,17 @@
+model_params:
+  commitment_cost: 0.25
+  decay: 0.99
+  embedding_dim: 64
+  num_embeddings: 512
+  num_hiddens: 128
+  num_residual_hiddens: 32
+  num_residual_layers: 2
+
+exp_params:
+  batch_size: 256
+  data_path: "/homes/gws/anirudhc/shared/data/"
+  gpu: 7
+  lr: 0.001
+  print_interval: 100
+  train_steps: 15000
+  weight_decay: 0.0

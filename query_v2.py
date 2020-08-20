@@ -18,6 +18,7 @@ from utils import prepare_data, normalize
 
 
 class QueryManager:
+
     def __init__(self):
         self._models_dir = os.path.join(os.getcwd(), 'data')
         self.custom_models_dir = os.path.join(self._models_dir, 'custom_models')
@@ -119,6 +120,7 @@ if __name__ == '__main__':
     >>> manager.query(42, 128, custom=True)
     [...] # returns list of all the logits if batch size is 128 then this is a list of len 391
     """
+    # TODO: fix logits for pgdl models and fix cacheing
     manager = QueryManager()
     manager.load_model('0', is_custom=False)
     logits = manager.query('0', 128, is_custom=False)
