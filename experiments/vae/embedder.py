@@ -11,33 +11,6 @@ import yaml
 from model import Model
 
 
-class Embedder:
-
-    def __init__(self, model, dataloader):
-        self.model = model
-        self.dataloader = dataloader
-        self.device = torch.device('cpu')
-
-    def embed(self):
-        print('Saving embeddings...')
-        embeddings, vq_embeddings = [], []
-        with torch.no_grad():
-            for (data, _) in tqdm(self.dataloader):
-                data = data.to(self.device)
-                z = self.model._encoder(data)
-                z = self.model._pre_vq_conv(z)
-                _, quantized, _, _ = self.model._vq_vae(z)
-                embeddings.append(z.cpu().numpy())
-                vq_embeddings.append(quantized.cpu().numpy())
-        embeddings = np.concatenate(embeddings, axis=0)
-        vq_embeddings = np.concatenate(vq_embeddings, axis=0)
-        print('Embeddings shape:', embeddings.shape)
-        print('VQ Embeddings shape:', vq_embeddings.shape)
-        results = {'pre_vq_embeddings': embeddings,
-                   'vq_embeddings': vq_embeddings}
-        torch.save(results, 'vq-vae-embeddings.pt')
-
-
 def main():
     parser = argparse.ArgumentParser('Create embeddings from a trained model')
     parser.add_argument('--config', '-c', dest='filename', metavar='FILE', default='vae.yaml')
@@ -53,23 +26,72 @@ def main():
     model.load_state_dict(torch.load(args.weights, map_location=device))
     model.eval()
 
+    train_data = datasets.CIFAR10(root=config['exp_params']['data_path'],
+                                       train=True,
+                                       download=False,
+                                       transform=Compose([
+                                           ToTensor(),
+                                           Normalize((0.5, 0.5, 0.5), (1.0, 1.0, 1.0))
+                                       ]))
     validation_data = datasets.CIFAR10(root=config['exp_params']['data_path'],
                                        train=False,
                                        download=False,
                                        transform=Compose([
                                            ToTensor(),
-                                           Normalize(
-                                               (0.5, 0.5, 0.5),
-                                               (1.0, 1.0, 1.0)
-                                           )
+                                           Normalize((0.5, 0.5, 0.5),(1.0, 1.0, 1.0))
                                        ]))
-    validation_loader = DataLoader(validation_data,
+    train_loader = DataLoader(train_data,
+                              batch_size=256,
+                              shuffle=False,
+                              pin_memory=True)
+    val_loader = DataLoader(validation_data,
                             batch_size=256,
                             shuffle=False,
                             pin_memory=True)
 
-    embedder = Embedder(model, validation_loader)
-    embedder.embed()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    print('Saving Train Embeddings...')
+    embeddings, vq_embeddings = [], []
+    with torch.no_grad():
+        for (data, _) in tqdm(train_loader):
+            data = data.to(device)
+            z = model._encoder(data)
+            z = model._pre_vq_conv(z)
+            _, quantized, _, _ = model._vq_vae(z)
+            embeddings.append(z.cpu().numpy())
+            vq_embeddings.append(quantized.cpu().numpy())
+    embeddings = np.concatenate(embeddings, axis=0)
+    vq_embeddings = np.concatenate(vq_embeddings, axis=0)
+    print('Train Embeddings shape:', type(embeddings), embeddings.shape)
+    print('Train VQ Embeddings shape:', type(vq_embeddings), vq_embeddings.shape)
+    print('Train Labels', type(train_data.targets), len(train_data.targets))
+    results = {'pre_vq_embeddings': embeddings,
+               'vq_embeddings': vq_embeddings,
+               'targets': train_data.targets}
+    torch.save(results, 'train-vq-vae-embeddings.pt')
+
+    print('Saving Validation Embeddings')
+    embeddings, vq_embeddings = [], []
+    with torch.no_grad():
+        for (data, _) in tqdm(val_loader):
+            data = data.to(device)
+            z = model._encoder(data)
+            z = model._pre_vq_conv(z)
+            _, quantized, _, _ = model._vq_vae(z)
+            embeddings.append(z.cpu().numpy())
+            vq_embeddings.append(quantized.cpu().numpy())
+    embeddings = np.concatenate(embeddings, axis=0)
+    vq_embeddings = np.concatenate(vq_embeddings, axis=0)
+    print('Validation Embeddings shape:', type(embeddings), embeddings.shape)
+    print('Validation VQ Embeddings shape:', type(vq_embeddings), vq_embeddings.shape)
+    print('Validation Labels', type(validation_data.targets), len(validation_data.targets))
+    results = {'pre_vq_embeddings': embeddings,
+               'vq_embeddings': vq_embeddings,
+               'targets': validation_data.targets}
+    torch.save(results, 'val-vq-vae-embeddings.pt')
+
+
 
 if __name__ == '__main__':
     main()
